@@ -1,0 +1,164 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+    <title>Subir imagen al servidor</title>
+	<link href="jquery-mobile/jquery.mobile-1.0.min.css" rel="stylesheet" type="text/css"/>
+    <script src="jquery-mobile/jquery-1.6.4.min.js" type="text/javascript"></script>
+	<script src="jquery-mobile/jquery.mobile-1.0.min.js" type="text/javascript"></script>
+    
+    <script type="text/javascript" charset="utf-8" src="phonegap.js"></script>
+    <script type="text/javascript" charset="utf-8">
+		//Variable de la imagen a mostrar
+		var imagen_a_mostrar = null;
+		var latitud, longitud;
+		
+        // Espera a que PhoneGap se inicie...
+        document.addEventListener("deviceready", onDeviceReady, false);
+
+        // PhoneGap esta listo...
+        function onDeviceReady() {
+			//alert("PhoneGap iniciado");
+		}
+		
+		//Funciones para capturar la imagen...
+		function tomarFoto(){
+			navigator.camera.getPicture(onPhotoDataSuccess, onFail, {quality: 100, destinationType : Camera.DestinationType.FILE_URI});
+		}
+		
+		function onPhotoDataSuccess(imageData){
+			
+			//Ocultamos el boton de captura de imagen...
+			//document.getElementById("btn_capturar_foto").style.display = 'none';
+			
+			//Creamos la imagen a mostrar...
+			var imagen = document.createElement("img");
+			imagen.id = "imagencapturada";
+			imagen.src = imageData;
+			imagen.style.width = "100%";
+					
+			//Visualizamos la imagen capturada
+			document.getElementById("capaimagen").appendChild(imagen);
+			
+			//Creamos los botones Guardar y Rechazar y los visualizamos
+			var boton_guardar = document.createElement("button");
+				var texto = document.createTextNode("Guardar");
+				boton_guardar.appendChild(texto);
+			boton_guardar.onclick = function(){subirFoto(imageData);};
+			
+			document.getElementById("capaimagen").appendChild(boton_guardar);
+			
+			var boton_rechazar = document.createElement("button");
+			var texto1 = document.createTextNode("Rechazar");
+				boton_rechazar.appendChild(texto1);
+			boton_rechazar.onclick = reestablecer;
+			document.getElementById("capaimagen").appendChild(boton_rechazar);
+			
+			//Capturamos la longitud y latitud con la API Geolocation
+			navigator.geolocation.getCurrentPosition(onSuccessGeo, onErrorGeo);
+    	}
+		
+		//Funcion Geolocalizacion Correcta
+		function onSuccessGeo(position){
+			latitud = position.coords.latitude;
+			longitud = position.coords.longitude;
+			alert(latitud + "\n" + longitud);
+		}
+		
+		//Funcion Error Geolocalizacion
+		function onErrorGeo(error){
+			alert("Codigo: " + error.code + "\n" +
+                "Mensaje: " + error.message + "\n");
+		}
+		
+		//Funcion de error del método getPicture
+		function onFail(message) {
+			alert('Ocurrió un error: ' + message);
+		}
+				
+		//Funcion boton Rechazar
+		function reestablecer(){
+			document.getElementById("btn_capturar_foto").style.display = 'block';
+			document.getElementById("capaimagen").innerHTML = "";
+		}
+		
+		//Funcion boton Guardar		
+		function subirFoto(imageData){
+			
+			//Creamos un objeto FileUploadOptions que almacenará las opciones del archivo a enviar al servidor	
+			var options = new FileUploadOptions();
+            options.fileKey = "imageData";//Nombre del elemento que se envía por POST
+			
+			//Capturamos el nombre que la imagen tendrá en el servidor...
+			imagen_a_mostrar = imageData.substr(imageData.lastIndexOf('/')+1);
+			
+            options.fileName = imageData.substr(imageData.lastIndexOf('/')+1);//Nombre del archivo
+			options.mimeType = "image/jpeg";//Tipo MIME del archivo
+			
+			//Parametros clave:valor;
+            var params = new Object();
+            params.value_latitud = latitud;
+            params.value_longitud = longitud;
+			
+			//Añadimos los parámetros al objeto de las opciones.
+            options.params = params;
+
+			//Creamos un objeto FileTransfer que realizará el envio a traves del método upload
+            var ft = new FileTransfer();
+            ft.upload(imageData, encodeURI("http://parkingapp.260mb.net/subir.php"), win, fail, options);	
+			
+        }
+
+		//Funcion cuando el envio ha sido correcto
+        function win(r) {
+            /*
+			//Propiedades de la respuesta que devuelve el servidor cuando no hay fallos en el envio
+			document.getElementById("caparesultados").innerHTML = "Código = " + r.responseCode + "<br>";
+            document.getElementById("caparesultados").innerHTML += "Respuesta = " + r.response + "<br>";
+            document.getElementById("caparesultados").innerHTML += "Enviados = " + r.bytesSent + "<br>";*/
+			//Limpiamos la capa donde mostraremos la imagen
+			document.getElementById("caparesultados").innerHTML = "";
+		
+			//Creamos la imagen a mostrar desde el servidor y la mostramos
+			var imagen_server = document.createElement("img");
+			imagen_server.id = "imagen_servidor";
+			imagen_server.src = "http://desarrollo.captative.com/pruebasubirimagen/img/" + imagen_a_mostrar;
+			imagen_server.style.width = "100%";
+			
+			document.getElementById("caparesultados").appendChild(imagen_server);
+			
+			location.href = "#page2";
+        }
+
+        function fail(error) {
+            alert("Ocurrio un error: Codigo = " + error.code);
+			/*
+			//Propiedades del objeto error cuando se produce un fallo en el envio			
+			document.getElementById("caparesultados").innerHTML = "upload error source " + error.source + "<br>";
+            document.getElementById("caparesultados").innerHTML += "upload error target " + error.target + "<br>";
+			document.getElementById("caparesultados").innerHTML += "upload error http_status " + error.http_status + "<br>";*/
+			location.href = "#page2";
+        }
+        </script>
+</head>
+<body>
+    <div data-role="page" id="page1">
+    	<div data-role="header">
+			<h3>Subir al servidor</h3>
+		</div>
+    	
+        <p>Tomaremos una imagen y la subiremos al servidor para luego mostrarla desde este.</p>
+        <button id="btn_capturar_foto" onclick="tomarFoto();">Capturar foto</button> <br>
+        <div id="capaimagen">				
+        </div>
+	</div>
+    
+    <div data-role="page" id="page2">
+    	<div data-role="header">
+    		<h3>Mostrar imagen</h3>
+        </div>   
+        <p>Imagen mostrada desde el servidor:</p>     
+        <div id="caparesultados">				
+        </div>
+    </div>
+</body>
+</html>
